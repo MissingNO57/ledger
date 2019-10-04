@@ -16,7 +16,7 @@
 //
 //------------------------------------------------------------------------------
 
-#include "dmlf/local_learner_networker.hpp"
+#include "dmlf/muddle2_learner_networker.hpp"
 #include "dmlf/simple_cycling_algorithm.hpp"
 #include "math/matrix_operations.hpp"
 #include "math/tensor.hpp"
@@ -28,6 +28,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 using namespace fetch::ml::ops;
@@ -63,12 +64,37 @@ std::vector<std::string> SplitTrainingData(std::string const &train_file,
   return client_data;
 }
 
-int main(int argc, char **argv)
+void MakeVocabFile(W2VTrainingParams<DataType> const &client_params, std::string const &train_file)
 {
-  if (argc != 3)
+  GraphW2VLoader<DataType> data_loader(client_params.window_size,
+                                       client_params.negative_sample_size,
+                                       client_params.freq_thresh, client_params.max_word_count);
+  data_loader.BuildVocabAndData({ReadFile(train_file)}, client_params.min_count, false);
+  data_loader.SaveVocab(client_params.vocab_file);
+}
+
+int main(int ac, char **av)
+{
+  if (ac < 4)
   {
-    std::cout << "Usage : " << argv[0] << " PATH/TO/text8 analogies_test_file" << std::endl;
+    std::cout << "Usage : " << av[0] << " PATH/TO/text8 process_name peer_names_list" << std::endl;
     return 1;
+  }
+
+  std::cout << std::string(av[3]) << " " << std::string(av[4]) << std::endl;
+
+  std::string config          = std::string(av[3]);
+  int         instance_number = std::atoi(av[4]);
+
+  std::vector<std::string> peers_names;
+
+  std::string word;
+  std::string peers_str = std::string(av[4]);
+
+  std::stringstream stream(peers_str);
+  while (std::getline(stream, word, ','))
+  {
+    peers_names.push_back(word);
   }
 
   W2VTrainingParams<DataType> client_params;
@@ -78,8 +104,7 @@ int main(int argc, char **argv)
   SizeType number_of_rounds  = 50;
   SizeType number_of_peers   = 2;
 
-  //  Synchronization occurs after this number of batches have been processed in total by the
-  //  clients
+  // Synchronization occurs after this number of batches have been processed in total by the clients
   client_params.iterations_count = 100;
   client_params.batch_size       = 10000;
   client_params.learning_rate    = static_cast<DataType>(.001f);
@@ -92,7 +117,7 @@ int main(int argc, char **argv)
   client_params.min_count            = 5;                 // infrequent word removal threshold
   client_params.embedding_size       = 100;               // dimension of embedding vec
   client_params.starting_learning_rate_per_sample =
-      DataType{0.0025f};  // these are the learning rates we have for each sample
+      0.0025;  // these are the learning rates we have for each sample
 
   client_params.k     = 20;       // how many nearest neighbours to compare against
   client_params.word0 = "three";  // test word to consider
@@ -108,79 +133,40 @@ int main(int argc, char **argv)
   client_params.learning_rate_param.starting_learning_rate = client_params.starting_learning_rate;
   client_params.learning_rate_param.ending_learning_rate   = client_params.ending_learning_rate;
 
-  std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
-
+  std::shared_ptr<std::mutex> console_mutex_ptr_ = std::make_shared<std::mutex>();
   std::cout << "FETCH Distributed Word2vec Demo -- Asynchronous" << std::endl;
 
-  std::string train_file            = argv[1];
-  client_params.analogies_test_file = argv[2];
+  std::string train_file = av[1];
+
+  MakeVocabFile(client_params, train_file);
 
   std::vector<std::string> client_data = SplitTrainingData(train_file, number_of_clients);
 
-  std::vector<std::shared_ptr<TrainingClient<TensorType>>>         clients(number_of_clients);
-  std::vector<std::shared_ptr<fetch::dmlf::LocalLearnerNetworker>> networkers(number_of_clients);
+  // Create networker
+  auto networker = std::make_shared<fetch::dmlf::Muddle2LearnerNetworker>(config, instance_number);
+  networker->Initialize<fetch::dmlf::Update<TensorType>>();
 
-  // Create networkers
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    networkers[i] = std::make_shared<fetch::dmlf::LocalLearnerNetworker>();
-    networkers[i]->Initialize<fetch::dmlf::Update<TensorType>>();
-  }
+  networker->SetShuffleAlgorithm(std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(
+      networker->GetPeerCount(), number_of_peers));
 
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    networkers[i]->AddPeers(networkers);
-    networkers[i]->SetShuffleAlgorithm(std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(
-        networkers[i]->GetPeerCount(), number_of_peers));
-  }
-
-  std::vector<std::pair<std::vector<std::string>, fetch::byte_array::ConstByteArray>> vocabs;
-
+  W2VTrainingParams<DataType> cp = client_params;
+  cp.data                        = {client_data};
   // Instantiate NUMBER_OF_CLIENTS clients
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    W2VTrainingParams<DataType> cp = client_params;
-    cp.data                        = {client_data[i]};
-    auto client =
-        std::make_shared<Word2VecClient<TensorType>>(std::to_string(i), cp, console_mutex_ptr);
-    // TODO(1597): Replace ID with something more sensible
-    clients[i] = client;
-    vocabs.push_back(client->GetVocab());
-  }
 
-  for (const auto &client : clients)
-  {
-    auto cast_client = std::dynamic_pointer_cast<Word2VecClient<TensorType>>(client);
+  std::shared_ptr<TrainingClient<TensorType>> client = std::make_shared<Word2VecClient<TensorType>>(
+      std::to_string(instance_number), cp, console_mutex_ptr_);
 
-    for (const auto &vocab : vocabs)
-    {
-      cast_client->AddVocab(vocab);
-    }
-  }
-
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    // Give each client pointer to coordinator
-    clients[i]->SetNetworker(networkers[i]);
-  }
+  // Give list of clients to coordinator
+  client->SetNetworker(networker);
 
   // Main loop
-  for (SizeType it(0); it < number_of_rounds; ++it)
+  for (SizeType it{0}; it < number_of_rounds; ++it)
   {
-
-    // Start all clients
     std::cout << "================= ROUND : " << it << " =================" << std::endl;
-    std::list<std::thread> threads;
-    for (auto &c : clients)
-    {
-      threads.emplace_back([&c] { c->Run(); });
-    }
 
-    // Wait for everyone to finish
-    for (auto &t : threads)
-    {
-      t.join();
-    }
+    // Start the client
+    client->Run();
+    ::sleep(1);
   }
 
   return 0;

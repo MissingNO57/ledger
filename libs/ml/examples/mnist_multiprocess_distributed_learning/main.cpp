@@ -17,6 +17,7 @@
 //------------------------------------------------------------------------------
 
 #include "dmlf/local_learner_networker.hpp"
+#include "dmlf/muddle2_learner_networker.hpp"
 #include "dmlf/simple_cycling_algorithm.hpp"
 #include "math/matrix_operations.hpp"
 #include "math/tensor.hpp"
@@ -27,9 +28,11 @@
 #include <algorithm>
 #include <chrono>
 #include <ctime>
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <unistd.h>
 #include <utility>
 #include <vector>
 
@@ -44,7 +47,7 @@ using SizeType         = fetch::math::SizeType;
 
 std::shared_ptr<TrainingClient<TensorType>> MakeClient(
     std::string const &id, ClientParams<DataType> &client_params, std::string const &images,
-    std::string const &labels, float test_set_ratio, std::shared_ptr<std::mutex> console_mutex_ptr)
+    std::string const &labels, float test_set_ratio, std::shared_ptr<std::mutex> &console_mutex_ptr)
 {
   // Initialise model
   std::shared_ptr<fetch::ml::Graph<TensorType>> g_ptr =
@@ -60,7 +63,6 @@ std::shared_ptr<TrainingClient<TensorType>> MakeClient(
   client_params.label_name = g_ptr->template AddNode<PlaceHolder<TensorType>>("Label", {});
   client_params.error_name =
       g_ptr->template AddNode<CrossEntropyLoss<TensorType>>("Error", {"Softmax", "Label"});
-  g_ptr->Compile();
 
   // Initialise DataLoader
   std::shared_ptr<fetch::ml::dataloaders::MNISTLoader<TensorType, TensorType>> dataloader_ptr =
@@ -79,73 +81,54 @@ std::shared_ptr<TrainingClient<TensorType>> MakeClient(
 
 int main(int ac, char **av)
 {
-  if (ac < 3)
+  if (ac < 5)
   {
     std::cout << "Usage : " << av[0]
-              << " PATH/TO/train-images-idx3-ubyte PATH/TO/train-labels-idx1-ubyte" << std::endl;
+              << " PATH/TO/train-images-idx3-ubyte PATH/TO/train-labels-idx1-ubyte process_name "
+                 "peer_names_list"
+              << std::endl;
     return 1;
   }
 
+  std::cout << std::string(av[3]) << " " << std::string(av[4]) << std::endl;
+
+  std::string config          = std::string(av[3]);
+  int         instance_number = std::atoi(av[4]);
+
   ClientParams<DataType> client_params;
 
-  SizeType number_of_clients                    = 5;
   SizeType number_of_rounds                     = 10;
-  client_params.iterations_count                = 20;
+  client_params.iterations_count                = 100;
   client_params.batch_size                      = 32;
   client_params.learning_rate                   = static_cast<DataType>(.001f);
   float                       test_set_ratio    = 0.03f;
   SizeType                    number_of_peers   = 3;
   std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
 
-  std::vector<std::shared_ptr<fetch::dmlf::LocalLearnerNetworker>> networkers(number_of_clients);
+  // Create networker
+  auto networker = std::make_shared<fetch::dmlf::Muddle2LearnerNetworker>(config, instance_number);
+  networker->Initialize<fetch::dmlf::Update<TensorType>>();
 
   std::cout << "FETCH Distributed MNIST Demo" << std::endl;
 
-  // Create networkers
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    networkers[i] = std::make_shared<fetch::dmlf::LocalLearnerNetworker>();
-    networkers[i]->Initialize<fetch::dmlf::Update<TensorType>>();
-  }
+  networker->SetShuffleAlgorithm(std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(
+      networker->GetPeerCount(), number_of_peers));
 
-  for (SizeType i(0); i < number_of_clients; ++i)
-  {
-    networkers[i]->AddPeers(networkers);
-    networkers[i]->SetShuffleAlgorithm(std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(
-        networkers[i]->GetPeerCount(), number_of_peers));
-  }
+  std::shared_ptr<TrainingClient<TensorType>> client =
+      MakeClient(std::to_string(instance_number), client_params, av[1], av[2], test_set_ratio,
+                 console_mutex_ptr);
 
-  std::vector<std::shared_ptr<TrainingClient<TensorType>>> clients(number_of_clients);
-  for (SizeType i{0}; i < number_of_clients; ++i)
-  {
-    // Instantiate NUMBER_OF_CLIENTS clients
-    clients[i] = MakeClient(std::to_string(i), client_params, av[1], av[2], test_set_ratio,
-                            console_mutex_ptr);
-    // TODO(1597): Replace ID with something more sensible
-  }
-
-  for (SizeType i{0}; i < number_of_clients; ++i)
-  {
-    // Give each client pointer to coordinator
-    clients[i]->SetNetworker(networkers[i]);
-  }
+  // Give list of clients to coordinator
+  client->SetNetworker(networker);
 
   // Main loop
   for (SizeType it{0}; it < number_of_rounds; ++it)
   {
-    // Start all clients
+    // Start the client
     std::cout << "================= ROUND : " << it << " =================" << std::endl;
-    std::list<std::thread> threads;
-    for (auto &c : clients)
-    {
-      threads.emplace_back([&c] { c->Run(); });
-    }
 
-    // Wait for everyone to finish
-    for (auto &t : threads)
-    {
-      t.join();
-    }
+    client->Run();
+    ::sleep(1);
   }
 
   return 0;

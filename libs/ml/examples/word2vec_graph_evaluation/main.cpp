@@ -20,14 +20,15 @@
 #include "ml/core/graph.hpp"
 #include "ml/dataloaders/word2vec_loaders/sgns_w2v_dataloader.hpp"
 #include "ml/layers/skip_gram.hpp"
+#include "ml/utilities/word2vec_utilities.hpp"
 #include "model_saver.hpp"
-#include "word2vec_utilities.hpp"
 
 #include <stdexcept>
 #include <string>
 
 using namespace fetch::ml;
 using namespace fetch::ml::examples;
+using namespace fetch::ml::utilities;
 using namespace fetch::ml::dataloaders;
 
 using DataType   = float;
@@ -78,9 +79,10 @@ int main(int argc, char **argv)
   std::shared_ptr<fetch::ml::ops::Embeddings<TensorType>> embeddings =
       sg_layer->GetEmbeddings(sg_layer);
 
-  DataType score =
-      TestWithAnalogies<TensorType>(data_loader, embeddings->GetWeights(), analogy_file);
+  DataType score = fetch::ml::utilities::TestWithAnalogies<TensorType>(
+      data_loader, embeddings->GetWeights(), analogy_file);
   std::cout << "Score on analogies task: " << score * 100 << "%" << std::endl;
   PrintKNN(data_loader, embeddings->GetWeights(), "three", 20);
-  PrintWordAnalogy(data_loader, embeddings->GetWeights(), "king", "queen", "father", 20);
+  fetch::ml::utilities::PrintWordAnalogy(data_loader, embeddings->GetWeights(), "king", "queen",
+                                         "father", 20);
 }

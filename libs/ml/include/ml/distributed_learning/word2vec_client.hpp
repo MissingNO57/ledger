@@ -19,10 +19,10 @@
 
 #include "math/clustering/knn.hpp"
 #include "ml/distributed_learning/distributed_learning_client.hpp"
+#include "ml/distributed_learning/translator.hpp"
 #include "ml/optimisation/adam_optimiser.hpp"
-#include "translator.hpp"
+#include "ml/utilities/word2vec_utilities.hpp"
 #include "word2vec_training_params.hpp"
-#include "word2vec_utilities.hpp"
 
 namespace fetch {
 namespace ml {
@@ -59,7 +59,7 @@ public:
 
   void Test() override;
 
-  GradientType GetGradients() override;
+  GradientType GetGradients();
 
   VectorTensorType TranslateGradients(GradientType &new_gradients) override;
 
@@ -179,14 +179,14 @@ void Word2VecClient<TensorType>::TestEmbeddings(std::string const &word0, std::s
 
     std::cout << std::endl;
     std::cout << "Client " << this->id_ << ", batches done = " << this->batch_counter_ << std::endl;
-    fetch::ml::examples::PrintKNN(*w2v_data_loader_ptr_, embeddings->GetWeights(), word0, K);
+    fetch::ml::utilities::PrintKNN(*w2v_data_loader_ptr_, embeddings->GetWeights(), word0, K);
     std::cout << std::endl;
-    fetch::ml::examples::PrintWordAnalogy(*w2v_data_loader_ptr_, embeddings->GetWeights(), word1,
-                                          word2, word3, K);
+    fetch::ml::utilities::PrintWordAnalogy(*w2v_data_loader_ptr_, embeddings->GetWeights(), word1,
+                                           word2, word3, K);
   }
 
-  DataType score = examples::TestWithAnalogies(*w2v_data_loader_ptr_, embeddings->GetWeights(),
-                                               tp_.analogies_test_file);
+  DataType score = utilities::TestWithAnalogies(*w2v_data_loader_ptr_, embeddings->GetWeights(),
+                                                tp_.analogies_test_file);
   std::cout << "Score on analogies task: " << score * 100 << "%" << std::endl;
 }
 
@@ -220,7 +220,7 @@ Word2VecClient<TensorType>::GetVocab()
  */
 template <class TensorType>
 void Word2VecClient<TensorType>::AddVocab(
-    std::pair<std::vector<std::string>, byte_array::ConstByteArray> const &vocab_info)
+    const std::pair<std::vector<std::string>, byte_array::ConstByteArray> &vocab_info)
 {
   translator_.AddVocab(vocab_info.second, vocab_info.first);
 }

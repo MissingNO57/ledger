@@ -16,11 +16,12 @@
 //
 //------------------------------------------------------------------------------
 
+#include "dmlf/local_learner_networker.hpp"
+#include "dmlf/simple_cycling_algorithm.hpp"
 #include "math/matrix_operations.hpp"
 #include "math/tensor.hpp"
 #include "ml/dataloaders/ReadCSV.hpp"
 #include "ml/dataloaders/tensor_dataloader.hpp"
-#include "ml/distributed_learning/coordinator.hpp"
 #include "ml/distributed_learning/distributed_learning_client.hpp"
 #include "ml/ops/loss_functions/cross_entropy_loss.hpp"
 #include "ml/optimisation/adam_optimiser.hpp"
@@ -212,21 +213,21 @@ int main(int argc, char **argv)
     return 1;
   }
 
+  ClientParams<DataType> client_params;
+
+  bool        synchronise   = false;
   SizeType    seed          = strtoul(argv[3], nullptr, 10);
   DataType    learning_rate = static_cast<DataType>(strtof(argv[4], nullptr));
   std::string results_dir   = argv[5];
 
-  CoordinatorParams      coord_params;
-  ClientParams<DataType> client_params;
+  SizeType number_of_clients     = 5;
+  SizeType number_of_rounds      = 50;
+  client_params.iterations_count = 20;
+  client_params.batch_size       = 32;
+  client_params.learning_rate    = static_cast<DataType>(.001f);
+  float    test_set_ratio        = 0.03f;
+  SizeType number_of_peers       = 3;
 
-  SizeType number_of_clients                    = 6;
-  SizeType number_of_rounds                     = 200;
-  coord_params.mode                             = CoordinatorMode::ASYNCHRONOUS;
-  coord_params.iterations_count                 = 16;  // should be n_data / batch_size
-  coord_params.number_of_peers                  = 3;
-  client_params.batch_size                      = 32;
-  client_params.learning_rate                   = learning_rate;
-  float                       test_set_ratio    = 0.00f;
   std::shared_ptr<std::mutex> console_mutex_ptr = std::make_shared<std::mutex>();
 
   // Load data
@@ -240,9 +241,23 @@ int main(int argc, char **argv)
   std::vector<TensorType> data_tensors  = Split(data_tensor, number_of_clients);
   std::vector<TensorType> label_tensors = Split(label_tensor, number_of_clients);
 
-  // Create coordinator
-  std::shared_ptr<Coordinator<TensorType>> coordinator =
-      std::make_shared<Coordinator<TensorType>>(coord_params);
+  std::cout << "FETCH Distributed BOSTON HOUSING Demo" << std::endl;
+
+  std::vector<std::shared_ptr<fetch::dmlf::LocalLearnerNetworker>> networkers(number_of_clients);
+
+  // Create networkers
+  for (SizeType i(0); i < number_of_clients; ++i)
+  {
+    networkers[i] = std::make_shared<fetch::dmlf::LocalLearnerNetworker>();
+    networkers[i]->Initialize<fetch::dmlf::Update<TensorType>>();
+  }
+
+  for (SizeType i(0); i < number_of_clients; ++i)
+  {
+    networkers[i]->AddPeers(networkers);
+    networkers[i]->SetShuffleAlgorithm(std::make_shared<fetch::dmlf::SimpleCyclingAlgorithm>(
+        networkers[i]->GetPeerCount(), number_of_peers));
+  }
 
   std::vector<std::shared_ptr<TrainingClient<TensorType>>> clients(number_of_clients);
   for (SizeType i{0}; i < number_of_clients; ++i)
@@ -253,13 +268,10 @@ int main(int argc, char **argv)
     // TODO(1597): Replace ID with something more sensible
   }
 
-  // Give list of clients to coordinator
-  coordinator->SetClientsList(clients);
-
   for (SizeType i{0}; i < number_of_clients; ++i)
   {
     // Give each client pointer to coordinator
-    clients[i]->SetCoordinator(coordinator);
+    clients[i]->SetNetworker(networkers[i]);
   }
 
   std::string results_filename = results_dir + "/fetch_" + std::to_string(number_of_clients) +
@@ -276,8 +288,7 @@ int main(int argc, char **argv)
   for (SizeType it{0}; it < number_of_rounds; ++it)
   {
     // Start all clients
-    coordinator->Reset();
-
+    std::cout << "ROUND : " << it << "\t";
     std::list<std::thread> threads;
     for (auto &c : clients)
     {
@@ -297,20 +308,21 @@ int main(int argc, char **argv)
     }
     std::cout << std::endl;
 
-    lossfile << it;
+    // Synchronize weights by giving all clients average of all client's weights
+    if (synchronise)
+    {
+      lossfile << it;
+    }
     for (auto &c : clients)
     {
       lossfile << "," << static_cast<double>(Test(c->GetModel(), data_tensor, label_tensor));
     }
     lossfile << std::endl;
 
-    if (coordinator->GetMode() == CoordinatorMode::ASYNCHRONOUS)
+    if (synchronise)
     {
-      continue;
+      SynchroniseWeights(clients);
     }
-
-    // Synchronize weights by giving all clients average of all client's weights
-    SynchroniseWeights(clients);
   }
 
   std::cout << "Results saved in " << results_filename << std::endl;

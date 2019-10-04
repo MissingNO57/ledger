@@ -26,8 +26,8 @@
 #include "ml/ops/loss_functions.hpp"
 #include "ml/optimisation/adam_optimiser.hpp"
 #include "ml/optimisation/sgd_optimiser.hpp"
+#include "ml/utilities/word2vec_utilities.hpp"
 #include "model_saver.hpp"
-#include "word2vec_utilities.hpp"
 
 #include <iostream>
 #include <string>
@@ -38,6 +38,7 @@ using namespace fetch::ml;
 using namespace fetch::ml::dataloaders;
 using namespace fetch::ml::ops;
 using namespace fetch::ml::layers;
+using namespace fetch::ml::utilities;
 using namespace fetch::ml::examples;
 
 using DataType   = float;
@@ -79,9 +80,9 @@ void TestEmbeddings(Graph<TensorType> const &g, std::string const &skip_gram_nam
   std::cout << std::endl;
   PrintKNN(dl, embeddings->GetWeights(), word0, K);
   std::cout << std::endl;
-  PrintWordAnalogy(dl, embeddings->GetWeights(), word1, word2, word3, K);
+  fetch::ml::utilities::PrintWordAnalogy(dl, embeddings->GetWeights(), word1, word2, word3, K);
 
-  TestWithAnalogies(dl, embeddings->GetWeights(), analogies_test_file);
+  fetch::ml::utilities::TestWithAnalogies(dl, embeddings->GetWeights(), analogies_test_file);
 }
 
 ////////////////////////////////
