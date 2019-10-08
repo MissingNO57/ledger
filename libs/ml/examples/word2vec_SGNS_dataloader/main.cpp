@@ -78,7 +78,7 @@ void TestEmbeddings(Graph<TensorType> const &g, std::string const &skip_gram_nam
       sg_layer->GetEmbeddings(sg_layer);
 
   std::cout << std::endl;
-  utilities::PrintKNN(dl, embeddings->GetWeights(), word0, K);
+  fetch::ml::utilities::PrintKNN(dl, embeddings->GetWeights(), word0, K);
   std::cout << std::endl;
   utilities::PrintWordAnalogy(dl, embeddings->GetWeights(), word1, word2, word3, K);
 
