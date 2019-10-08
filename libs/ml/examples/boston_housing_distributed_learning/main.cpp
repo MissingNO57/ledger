@@ -23,6 +23,7 @@
 #include "ml/dataloaders/ReadCSV.hpp"
 #include "ml/dataloaders/tensor_dataloader.hpp"
 #include "ml/distributed_learning/distributed_learning_client.hpp"
+#include "ml/exceptions/exceptions.hpp"
 #include "ml/ops/loss_functions/cross_entropy_loss.hpp"
 #include "ml/optimisation/adam_optimiser.hpp"
 #include "ml/optimisation/sgd_optimiser.hpp"
@@ -281,7 +282,7 @@ int main(int argc, char **argv)
 
   if (!lossfile)
   {
-    throw std::runtime_error("Bad output file");
+    throw fetch::ml::exceptions::InvalidFile("Bad output file");
   }
 
   // Main loop
