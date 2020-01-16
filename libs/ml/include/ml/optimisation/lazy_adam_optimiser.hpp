@@ -57,16 +57,16 @@ public:
   LazyAdamOptimiser(std::shared_ptr<Graph<T>>       graph,
                     std::vector<std::string> const &input_node_names,
                     std::string const &label_node_name, std::string const &output_node_name,
-                    DataType const &learning_rate      = fetch::math::Type<DataType>("0.001"),
-                    DataType const &beta1              = fetch::math::Type<DataType>("0.9"),
-                    DataType const &beta2              = fetch::math::Type<DataType>("0.999"),
+            fetch::fixed_point::fp32_t const &learning_rate      = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"),
+            fetch::fixed_point::fp32_t const &beta1              = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"),
+            fetch::fixed_point::fp32_t const &beta2              = fetch::math::Type<fetch::fixed_point::fp32_t>("0.999"),
                     SizeType        sparsity_threshold = 2,
                     DataType const &epsilon            = fetch::math::Type<DataType>("0.0001"));
 
   LazyAdamOptimiser(std::shared_ptr<Graph<T>>       graph,
                     std::vector<std::string> const &input_node_names,
                     std::string const &label_node_name, std::string const &output_node_name,
-                    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
+                    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
                     DataType const &beta1              = fetch::math::Type<DataType>("0.9"),
                     DataType const &beta2              = fetch::math::Type<DataType>("0.999"),
                     SizeType        sparsity_threshold = 2,
@@ -99,9 +99,9 @@ LazyAdamOptimiser<T>::LazyAdamOptimiser(std::shared_ptr<Graph<T>>       graph,
                                         std::vector<std::string> const &input_node_names,
                                         std::string const &             label_node_name,
                                         std::string const &             output_node_name,
-                                        DataType const &learning_rate, DataType const &beta1,
+                                        fetch::fixed_point::fp32_t const &learning_rate, fetch::fixed_point::fp32_t const &beta1,
 
-                                        DataType const &beta2, SizeType sparsity_threshold,
+                                        fetch::fixed_point::fp32_t const &beta2, SizeType sparsity_threshold,
                                         DataType const &epsilon)
   : AdamOptimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate,
                      beta1, beta2, epsilon)
@@ -112,7 +112,7 @@ template <class T>
 LazyAdamOptimiser<T>::LazyAdamOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
     DataType const &beta1, DataType const &beta2, SizeType sparsity_threshold,
     DataType const &epsilon)
   : AdamOptimiser<T>(graph, input_node_names, label_node_name, output_node_name,

@@ -48,16 +48,16 @@ public:
 
   AdamOptimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
                 std::string const &label_node_name, std::string const &output_node_name,
-                DataType const &learning_rate = fetch::math::Type<DataType>("0.001"),
-                DataType const &beta1         = fetch::math::Type<DataType>("0.9"),
-                DataType const &beta2         = fetch::math::Type<DataType>("0.999"),
+            fetch::fixed_point::fp32_t const &learning_rate = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"),
+            fetch::fixed_point::fp32_t const &beta1         = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"),
+            fetch::fixed_point::fp32_t const &beta2         = fetch::math::Type<fetch::fixed_point::fp32_t>("0.999"),
                 DataType const &epsilon       = fetch::math::Type<DataType>("0.0001"));
 
   AdamOptimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
                 std::string const &label_node_name, std::string const &output_node_name,
-                fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-                DataType const &beta1   = fetch::math::Type<DataType>("0.9"),
-                DataType const &beta2   = fetch::math::Type<DataType>("0.999"),
+                fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &beta1   = fetch::math::Type<DataType>("0.9"),
+            fetch::fixed_point::fp32_t const &beta2   = fetch::math::Type<DataType>("0.999"),
                 DataType const &epsilon = fetch::math::Type<DataType>("0.0001"));
 
   ~AdamOptimiser() override = default;
@@ -105,8 +105,8 @@ template <class T>
 AdamOptimiser<T>::AdamOptimiser(std::shared_ptr<Graph<T>>       graph,
                                 std::vector<std::string> const &input_node_names,
                                 std::string const &             label_node_name,
-                                std::string const &output_node_name, DataType const &learning_rate,
-                                DataType const &beta1, DataType const &beta2,
+                                std::string const &output_node_name, fetch::fixed_point::fp32_t const &learning_rate,
+    fetch::fixed_point::fp32_t const &beta1, fetch::fixed_point::fp32_t const &beta2,
                                 DataType const &epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate)
   , beta1_(beta1)
@@ -122,8 +122,8 @@ template <class T>
 AdamOptimiser<T>::AdamOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-    DataType const &beta1, DataType const &beta2, DataType const &epsilon)
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &beta1, fetch::fixed_point::fp32_t const &beta2, DataType const &epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate_param)
   , beta1_(beta1)
   , beta2_(beta2)
@@ -184,6 +184,8 @@ void AdamOptimiser<T>::ApplyGradients(SizeType batch_size)
       fetch::math::Sqrt(*vt_it, *gradient_it);
       fetch::math::Add(*gradient_it, epsilon_, *gradient_it);
       fetch::math::Divide(*mt_it, *gradient_it, *gradient_it);
+
+      // TOFIX convert to fp32, multiply and then convert it back to DataType
       fetch::math::Multiply(*gradient_it, -this->learning_rate_, *gradient_it);
 
       // we need to explicitly reset the gradients for this shared op to avoid double counting

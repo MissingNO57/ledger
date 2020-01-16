@@ -41,14 +41,14 @@ public:
   MomentumOptimiser(std::shared_ptr<Graph<T>>       graph,
                     std::vector<std::string> const &input_node_names,
                     std::string const &label_node_name, std::string const &output_node_name,
-                    DataType const &learning_rate   = fetch::math::Type<DataType>("0.001"),
-                    DataType const &momentum_update = fetch::math::Type<DataType>("0.9"));
+            fetch::fixed_point::fp32_t const &learning_rate   = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"),
+            fetch::fixed_point::fp32_t const &momentum_update = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"));
 
   MomentumOptimiser(std::shared_ptr<Graph<T>>       graph,
                     std::vector<std::string> const &input_node_names,
                     std::string const &label_node_name, std::string const &output_node_name,
-                    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-                    DataType const &momentum_update = fetch::math::Type<DataType>("0.9"));
+                    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &momentum_update = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"));
 
   ~MomentumOptimiser() override = default;
 
@@ -83,8 +83,8 @@ MomentumOptimiser<T>::MomentumOptimiser(std::shared_ptr<Graph<T>>       graph,
                                         std::vector<std::string> const &input_node_names,
                                         std::string const &             label_node_name,
                                         std::string const &             output_node_name,
-                                        DataType const &                learning_rate,
-                                        DataType const &                momentum_update)
+                                                fetch::fixed_point::fp32_t const &                learning_rate,
+    fetch::fixed_point::fp32_t const &                momentum_update)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate)
   , momentum_update_(momentum_update)
 {
@@ -95,8 +95,8 @@ template <class T>
 MomentumOptimiser<T>::MomentumOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-    DataType const &                                          momentum_update)
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &                                          momentum_update)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate_param)
   , momentum_update_(momentum_update)
 {

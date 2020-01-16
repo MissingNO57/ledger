@@ -29,10 +29,8 @@ namespace optimisers {
  * Training annealing config
  * @tparam T
  */
-template <typename T>
 struct LearningRateParam
 {
-  using DataType = T;
   enum class LearningRateDecay : uint8_t
   {
     EXPONENTIAL,
@@ -40,10 +38,10 @@ struct LearningRateParam
     NONE
   };
   LearningRateDecay mode                   = LearningRateDecay::NONE;
-  DataType          starting_learning_rate = fetch::math::Type<DataType>("0.001");
-  DataType          ending_learning_rate   = starting_learning_rate / DataType{10000};
-  DataType          linear_decay_rate      = starting_learning_rate / DataType{10000};
-  DataType          exponential_decay_rate = fetch::math::Type<DataType>("0.999");
+    fixed_point::fp32_t          starting_learning_rate = fetch::math::Type<fixed_point::fp32_t>("0.001");
+    fixed_point::fp32_t          ending_learning_rate   = starting_learning_rate / fixed_point::fp32_t{10000};
+    fixed_point::fp32_t          linear_decay_rate      = starting_learning_rate / fixed_point::fp32_t{10000};
+    fixed_point::fp32_t          exponential_decay_rate = fetch::math::Type<fixed_point::fp32_t>("0.999");
 };
 }  // namespace optimisers
 }  // namespace ml
@@ -53,10 +51,10 @@ namespace serializers {
  * serializer for Learning Rate Params
  * @tparam TensorType
  */
-template <typename T, typename D>
-struct MapSerializer<ml::optimisers::LearningRateParam<T>, D>
+template <typename D>
+struct MapSerializer<ml::optimisers::LearningRateParam, D>
 {
-  using Type       = ml::optimisers::LearningRateParam<T>;
+  using Type       = ml::optimisers::LearningRateParam;
   using DriverType = D;
 
   static uint8_t const LEARNING_RATE_DECAY_MODE = 1;
@@ -84,7 +82,7 @@ struct MapSerializer<ml::optimisers::LearningRateParam<T>, D>
     uint8_t lrdm;
     map.ExpectKeyGetValue(LEARNING_RATE_DECAY_MODE, lrdm);
     sp.mode =
-        static_cast<typename fetch::ml::optimisers::LearningRateParam<T>::LearningRateDecay>(lrdm);
+        static_cast<typename fetch::ml::optimisers::LearningRateParam::LearningRateDecay>(lrdm);
 
     map.ExpectKeyGetValue(STARTING_LEARNING_RATE, sp.starting_learning_rate);
     map.ExpectKeyGetValue(ENDING_LEARNING_RATE, sp.ending_learning_rate);

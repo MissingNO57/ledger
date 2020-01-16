@@ -42,15 +42,15 @@ public:
   RMSPropOptimiser(std::shared_ptr<Graph<T>>       graph,
                    std::vector<std::string> const &input_node_names,
                    std::string const &label_node_name, std::string const &output_node_name,
-                   DataType const &learning_rate = fetch::math::Type<DataType>("0.001"),
-                   DataType const &decay_rate    = fetch::math::Type<DataType>("0.9"),
+            fetch::fixed_point::fp32_t const &learning_rate = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"),
+            fetch::fixed_point::fp32_t const &decay_rate    = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"),
                    DataType const &epsilon       = fetch::math::Type<DataType>("0.00000001"));
 
   RMSPropOptimiser(std::shared_ptr<Graph<T>>       graph,
                    std::vector<std::string> const &input_node_names,
                    std::string const &label_node_name, std::string const &output_node_name,
-                   fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-                   DataType const &decay_rate = fetch::math::Type<DataType>("0.9"),
+                   fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &decay_rate = fetch::math::Type<fetch::fixed_point::fp32_t>("0.9"),
                    DataType const &epsilon    = fetch::math::Type<DataType>("0.00000001"));
 
   ~RMSPropOptimiser() override = default;
@@ -62,7 +62,7 @@ public:
 
 private:
   std::vector<TensorType> cache_;
-  DataType                decay_rate_;
+    fetch::fixed_point::fp32_t                decay_rate_;
   DataType                one_{1};
   DataType                epsilon_;
 
@@ -87,7 +87,7 @@ RMSPropOptimiser<T>::RMSPropOptimiser(std::shared_ptr<Graph<T>>       graph,
                                       std::vector<std::string> const &input_node_names,
                                       std::string const &             label_node_name,
                                       std::string const &             output_node_name,
-                                      DataType const &learning_rate, DataType const &decay_rate,
+                                              fetch::fixed_point::fp32_t const &learning_rate, fetch::fixed_point::fp32_t const &decay_rate,
                                       DataType const &epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate)
   , decay_rate_(decay_rate)
@@ -100,8 +100,8 @@ template <class T>
 RMSPropOptimiser<T>::RMSPropOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
-    DataType const &decay_rate, DataType const &epsilon)
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
+    fetch::fixed_point::fp32_t const &decay_rate, DataType const &epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate_param)
   , decay_rate_(decay_rate)
   , epsilon_(epsilon)

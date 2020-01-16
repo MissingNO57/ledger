@@ -41,11 +41,11 @@ public:
   SGDOptimiser() = default;
   SGDOptimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
                std::string const &label_node_name, std::string const &output_node_name,
-               DataType const &learning_rate = fetch::math::Type<DataType>("0.001"));
+            fetch::fixed_point::fp32_t const &learning_rate = fetch::math::Type<DataType>("0.001"));
 
   SGDOptimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
                std::string const &label_node_name, std::string const &output_node_name,
-               fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param);
+               fetch::ml::optimisers::LearningRateParam const &learning_rate_param);
 
   ~SGDOptimiser() override = default;
 
@@ -72,7 +72,7 @@ template <class T>
 SGDOptimiser<T>::SGDOptimiser(std::shared_ptr<Graph<T>>       graph,
                               std::vector<std::string> const &input_node_names,
                               std::string const &             label_node_name,
-                              std::string const &output_node_name, DataType const &learning_rate)
+                              std::string const &output_node_name, fetch::fixed_point::fp32_t const &learning_rate)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate)
 {}
 
@@ -84,7 +84,7 @@ template <class T>
 SGDOptimiser<T>::SGDOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<SGDOptimiser<T>::DataType> const &learning_rate_param)
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate_param)
 {}
 

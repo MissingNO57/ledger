@@ -46,13 +46,13 @@ public:
   AdaGradOptimiser(std::shared_ptr<Graph<T>>       graph,
                    std::vector<std::string> const &input_node_names,
                    std::string const &label_node_name, std::string const &output_node_name,
-                   DataType const &learning_rate = fetch::math::Type<DataType>("0.001"),
+                   fetch::fixed_point::fp32_t const &learning_rate = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"),
                    DataType const &epsilon       = fetch::math::Type<DataType>("0.00000001"));
 
   AdaGradOptimiser(std::shared_ptr<Graph<T>>       graph,
                    std::vector<std::string> const &input_node_names,
                    std::string const &label_node_name, std::string const &output_node_name,
-                   fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
+                   fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
                    DataType const &epsilon = fetch::math::Type<DataType>("0.00000001"));
 
   ~AdaGradOptimiser() override = default;
@@ -75,7 +75,7 @@ AdaGradOptimiser<T>::AdaGradOptimiser(std::shared_ptr<Graph<T>>       graph,
                                       std::vector<std::string> const &input_node_names,
                                       std::string const &             label_node_name,
                                       std::string const &             output_node_name,
-                                      DataType const &learning_rate, DataType const &epsilon)
+                                      fetch::fixed_point::fp32_t const &learning_rate, DataType const &epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate)
   , epsilon_(epsilon)
 {
@@ -90,7 +90,7 @@ template <class T>
 AdaGradOptimiser<T>::AdaGradOptimiser(
     std::shared_ptr<Graph<T>> graph, std::vector<std::string> const &input_node_names,
     std::string const &label_node_name, std::string const &output_node_name,
-    fetch::ml::optimisers::LearningRateParam<DataType> const &learning_rate_param,
+    fetch::ml::optimisers::LearningRateParam const &learning_rate_param,
     DataType const &                                          epsilon)
   : Optimiser<T>(graph, input_node_names, label_node_name, output_node_name, learning_rate_param)
   , epsilon_(epsilon)

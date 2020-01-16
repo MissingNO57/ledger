@@ -51,11 +51,11 @@ public:
   Optimiser() = default;
   Optimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> input_node_names,
             std::string label_node_name, std::string output_node_name,
-            DataType const &learning_rate = fetch::math::Type<DataType>("0.001"));
+            fetch::fixed_point::fp32_t const &learning_rate = fetch::math::Type<fetch::fixed_point::fp32_t>("0.001"));
 
   Optimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> input_node_names,
             std::string label_node_name, std::string output_node_name,
-            LearningRateParam<DataType> learning_rate_param);
+            LearningRateParam learning_rate_param);
 
   virtual ~Optimiser() = default;
 
@@ -72,7 +72,7 @@ public:
   DataType Run(fetch::ml::dataloaders::DataLoader<TensorType> &loader,
                SizeType batch_size = SIZE_NOT_SET, SizeType subset_size = SIZE_NOT_SET);
   DataType Run(fetch::ml::dataloaders::DataLoader<TensorType> &loader,
-               LearningRateParam<DataType> learning_rate_param, SizeType batch_size = SIZE_NOT_SET,
+               LearningRateParam learning_rate_param, SizeType batch_size = SIZE_NOT_SET,
                SizeType subset_size = SIZE_NOT_SET);
 
   void     UpdateLearningRate();
@@ -93,7 +93,7 @@ protected:
   std::vector<std::string>  input_node_names_ = {};
   std::string               label_node_name_  = "";
   std::string               output_node_name_ = "";
-  DataType                  learning_rate_    = fetch::math::numeric_max<DataType>();
+    fetch::fixed_point::fp32_t                  learning_rate_    = fetch::math::numeric_max<fetch::fixed_point::fp32_t>();
   std::vector<std::shared_ptr<fetch::ml::ops::Trainable<TensorType>>> graph_trainables_;
   std::vector<TensorType>                                             gradients_;
   SizeType                                                            epoch_ = SIZE_NOT_SET;
@@ -112,7 +112,7 @@ private:
   std::string                                    stat_string_;
   std::vector<TensorType>                        batch_data_;
   TensorType                                     batch_labels_;
-  LearningRateParam<DataType>                    learning_rate_param_;
+  LearningRateParam                    learning_rate_param_;
 
   void ResetGradients();
 
@@ -142,7 +142,7 @@ void Optimiser<T>::Init()
 template <class T>
 Optimiser<T>::Optimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> input_node_names,
                         std::string label_node_name, std::string output_node_name,
-                        DataType const &learning_rate)
+                        fetch::fixed_point::fp32_t const &learning_rate)
   : graph_(std::move(graph))
   , input_node_names_(std::move(input_node_names))
   , label_node_name_(std::move(label_node_name))
@@ -156,7 +156,7 @@ Optimiser<T>::Optimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string
 template <class T>
 Optimiser<T>::Optimiser(std::shared_ptr<Graph<T>> graph, std::vector<std::string> input_node_names,
                         std::string label_node_name, std::string output_node_name,
-                        LearningRateParam<DataType> learning_rate_param)
+                        LearningRateParam learning_rate_param)
   : graph_(std::move(graph))
   , input_node_names_(std::move(input_node_names))
   , label_node_name_(std::move(label_node_name))
@@ -290,7 +290,7 @@ typename T::Type Optimiser<T>::Run(std::vector<TensorType> const &data, TensorTy
  */
 template <class T>
 typename T::Type Optimiser<T>::Run(fetch::ml::dataloaders::DataLoader<TensorType> &loader,
-                                   LearningRateParam<DataType> learning_rate_param,
+                                   LearningRateParam learning_rate_param,
                                    SizeType batch_size, SizeType subset_size)
 {
   // setting up learning_rate_param_
@@ -423,25 +423,25 @@ void Optimiser<T>::UpdateLearningRate()
 {
   switch (learning_rate_param_.mode)
   {
-  case LearningRateParam<DataType>::LearningRateDecay::EXPONENTIAL:
+  case LearningRateParam::LearningRateDecay::EXPONENTIAL:
   {
     learning_rate_ = learning_rate_param_.starting_learning_rate *
                      fetch::math::Pow(learning_rate_param_.exponential_decay_rate,
-                                      static_cast<DataType>(epoch_ + 1));
+                                      static_cast<fetch::fixed_point::fp32_t>(epoch_ + 1));
     break;
   }
-  case LearningRateParam<DataType>::LearningRateDecay::LINEAR:
+  case LearningRateParam::LearningRateDecay::LINEAR:
   {
     learning_rate_ = learning_rate_param_.starting_learning_rate *
-                     (DataType{1} - learning_rate_param_.linear_decay_rate *
-                                        static_cast<DataType>(cumulative_step_));
+                     (fetch::fixed_point::fp32_t{1} - learning_rate_param_.linear_decay_rate *
+                                        static_cast<fetch::fixed_point::fp32_t>(cumulative_step_));
     if (learning_rate_ < learning_rate_param_.ending_learning_rate)
     {
       learning_rate_ = learning_rate_param_.ending_learning_rate;
     }
     break;
   }
-  case LearningRateParam<DataType>::LearningRateDecay::NONE:
+  case LearningRateParam::LearningRateDecay::NONE:
   {
     break;
   }
